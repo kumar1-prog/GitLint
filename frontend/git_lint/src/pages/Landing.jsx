@@ -2,13 +2,8 @@ import Logo from "../assets/logo.png"
 
 export default function Landing() {
     const handleLogin = () => {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
+        const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
         window.location.href = `${apiUrl}/auth/login`
-    }
-
-    const handleSignup = () => {
-        const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
-        window.location.href = `${apiUrl}/auth/login?prompt=consent`
     }
 
     const features = [
