@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gitlint-scorer.netlify.app/sitemap.xml
