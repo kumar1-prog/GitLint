@@ -18,7 +18,7 @@ export default function Landing() {
                     <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                 </svg>
             ),
-            title: "Recruiter AI Simulation",
+            title: "Recruiter Like Analysis",
             desc: "See exactly how hiring managers perceive your GitHub in the first 30 seconds.",
             color: "#7c6cf8"
         },
