@@ -53,44 +53,25 @@ def root():
     return {"status": "GitLint API is running"}
 
 @app.get("/profile/{username}")
-async def get_profile(username: str, request: fastapi.Request, db: Session = Depends(get_db)):
-    # Extract JWT from headers
-    import os
-    github_token = os.getenv("GITHUB_TOKEN")
+async def get_profile(username: str, db: Session = Depends(get_db)):
     
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        try:
-            token = auth_header.split(" ")[1]
-            from jose import jwt
-            payload = jwt.decode(token, os.getenv("JWT_SECRET"), algorithms=["HS256"])
-            if payload.get("github_token"):
-                github_token = payload.get("github_token")
-        except Exception:
-            pass
+    # Check if audit exists within last 24 hours
+    from datetime import datetime, timedelta
+    recent = db.query(AuditReport).filter(
+        AuditReport.github_username == username,
+        AuditReport.created_at > datetime.utcnow() - timedelta(hours=24)
+    ).first()
 
-    data = await fetch_all_data(github_token, username)
+    if recent:
+        # Serve from DB — no GitHub API call needed!
+        return recent.full_report
+
+    # No recent audit — fetch fresh from GitHub
+    token = os.getenv("GITHUB_TEST_TOKEN")
+    data = await fetch_all_data(token, username)
     report = generate_audit_report(data)
 
-
-    # Check if user already exists in DB
-    user = db.query(User).filter(
-        User.github_username == username
-    ).first()
-    # .first() returns the first matching row or None
-    # Without .first() you get a Query object, not actual data
-
-    if not user:
-        # First time this user ran an audit — create their record
-        user = User(
-            github_username=username,
-        )
-        db.add(user)       # stages the insert — not saved yet
-        db.commit()        # NOW it's saved to PostgreSQL
-        db.refresh(user)   # reloads user from DB so we get the auto-generated id
-
-    # Save this audit report to DB every time
-    # This builds up history — future benchmark calculations use this data
+    # Save to DB as usual
     audit = AuditReport(
         github_username=username,
         overall_score=report["overall_score"],
