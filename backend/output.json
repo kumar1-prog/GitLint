@@ -1,0 +1,45 @@
+{
+    "username": "kumar1-prog",
+    "overall_score": 56,
+    "blind_spots": [
+        "Commit consistency",
+        "Project depth"
+    ],
+    "signals": {
+        "commit_consistency": {
+            "score": 38,
+            "reason": "Only 4 active weeks - looks like deadline-driven coding",
+            "improvement": "Your commit graph looks very bursty. Recuiters look for steady momentum. Try to make at least one meaningful commit every week."
+        },
+        "fork_ratio": {
+            "score": 100,
+            "reason": "6 original repos out of 6 - solid original work",
+            "improvement": "You have a great ratio of original work. Keep focusing on building your own projects from scratch."
+        },
+        "readme_quality": {
+            "score": 57,
+            "reason": "READMEs exist but lack setup instructions or demos",
+            "improvement": "Your READMEs are a bit sparse. Add installation steps, usage examples with code blocks, and visual screenshots to grab attention."
+        },
+        "language_diversity": {
+            "score": 60,
+            "reason": "Uses CSS, JavaScript, Python - decent range",
+            "languages": [
+                "CSS",
+                "JavaScript",
+                "Python"
+            ],
+            "improvement": "You show a solid, focused tech stack. Make sure you highlight your strongest language in your pinned repositories."
+        },
+        "project_depth": {
+            "score": 27,
+            "reason": "Projects look shallow - small size, no stars, no descriptions",
+            "improvement": "Your projects look like fast tutorials or homework assignments. Try building one large, deeply integrated application to demonstrate architectural skills."
+        },
+        "peer_benchmark": {
+            "score": 61,
+            "reason": "Around average - room to stand out more",
+            "improvement": "You have a baseline profile. Pick one specific area (like READMEs or project depth) to polish to jump into the elite tier."
+        }
+    }
+}

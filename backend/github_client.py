@@ -14,12 +14,13 @@ GITHUB_API = "https://api.github.com"
 # If this header is missing → GitHub treats you as unauthenticated
 # Unauthenticated = only 60 API calls per hour (authenticated = 5000)
 def get_headers(token: str) -> dict:
-    return {
-        "Authorization": f"Bearer {token}",
+    headers = {
         "Accept": "application/vnd.github+json",
-        # This Accept header tells GitHub: give me the latest stable API response format
-        # Without it, GitHub still works but may return older response shapes
+        "User-Agent": "GitLint-App",
     }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 async def fetch_user_profile(token: str) -> dict:
@@ -59,6 +60,7 @@ async def fetch_repos(token: str, username: str) -> list:
     # If token is invalid, GitHub returns a dict with "message": "Bad credentials"
     # instead of a list — so we guard against that
     if not isinstance(repos, list):
+        print("GITHUB API ERROR FOR REPOS:", repos)
         return []
     
     return repos

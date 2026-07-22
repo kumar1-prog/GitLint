@@ -1,42 +1,23 @@
-import fastapi
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from pathlib import Path
+from sqlalchemy.orm import Session
+from sqlalchemy import func as sqlfunc
 import os
 
 from auth import router as auth_router
 from github_client import fetch_all_data
 from evaluate import generate_audit_report
-
-from sqlalchemy.orm import Session
-from fastapi import Depends
-from database import get_db
+from database import get_db, create_tables
 from models import User, AuditReport
 
-print("=== ENV DEBUG ===")
-print("CLIENT ID:", os.getenv("GITHUB_CLIENT_ID"))
-print("SECRET:", os.getenv("GITHUB_CLIENT_SECRET")[:5] if os.getenv("GITHUB_CLIENT_SECRET") else "None")
-print("=================")
-from dotenv import load_dotenv
-import os
-from pathlib import Path
-
-# Instead of just load_dotenv() which searches randomly,
-# we tell it EXACTLY where the .env file is
-# Path(__file__) = path of main.py itself
-# .parent = the folder containing main.py (backend/)
-# / ".env" = the .env file inside that folder
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
-print("CLIENT ID LOADED:", os.getenv("GITHUB_CLIENT_ID"))
-
-print("=== ENV AFTER LOAD ===")
-print("CLIENT ID:", os.getenv("GITHUB_CLIENT_ID"))
-print("SECRET:", os.getenv("GITHUB_CLIENT_SECRET")[:5] if os.getenv("GITHUB_CLIENT_SECRET") else "None")
-print("=================")  
-
 app = FastAPI(title="GitLint API")
+
+create_tables()
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,25 +34,49 @@ def root():
     return {"status": "GitLint API is running"}
 
 @app.get("/profile/{username}")
-async def get_profile(username: str, db: Session = Depends(get_db)):
-    
-    # Check if audit exists within last 24 hours
-    from datetime import datetime, timedelta
-    recent = db.query(AuditReport).filter(
-        AuditReport.github_username == username,
-        AuditReport.created_at > datetime.utcnow() - timedelta(hours=24)
-    ).first()
+async def get_profile(username: str, request: Request, db: Session = Depends(get_db)):
+    # Extract JWT from headers
+    import os
+    github_token = os.getenv("GITHUB_TOKEN")
+    print("DEFAULT FALLBACK TOKEN:", repr(github_token))
 
-    if recent:
-        # Serve from DB — no GitHub API call needed!
-        return recent.full_report
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            from jose import jwt
+            payload = jwt.decode(token, os.getenv("JWT_SECRET"), algorithms=["HS256"])
+            print("JWT DECODED SUCCESSFULLY. Payload:", payload.keys())
+            if payload.get("github_token"):
+                github_token = payload.get("github_token")
+                print("USING OAUTH TOKEN FROM JWT:", repr(github_token))
+        except Exception as e:
+            print("JWT DECODE ERROR:", e)
 
-    # No recent audit — fetch fresh from GitHub
-    token = os.getenv("GITHUB_TEST_TOKEN")
-    data = await fetch_all_data(token, username)
+    print("FINAL TOKEN FOR FETCHING:", repr(github_token))
+    data = await fetch_all_data(github_token, username)
+    print("FETCHED DATA REPOS COUNT:", data.get("total_repos"))
     report = generate_audit_report(data)
 
-    # Save to DB as usual
+     # Check if user already exists in DB
+    user = db.query(User).filter(
+        User.github_username == username
+    ).first()
+    # .first() returns the first matching row or None
+    # Without .first() you get a Query object, not actual data
+
+    if not user:
+        # First time this user ran an audit — create their record
+        user = User(
+            github_username=username,
+        )
+        db.add(user)       # stages the insert — not saved yet
+        db.commit()        # NOW it's saved to PostgreSQL
+        db.refresh(user)   # reloads user from DB so we get the auto-generated id
+
+    # Save this audit report to DB every time
+    # This builds up history — future benchmark calculations use this data
+
     audit = AuditReport(
         github_username=username,
         overall_score=report["overall_score"],
@@ -112,7 +117,6 @@ def get_benchmarks(db: Session = Depends(get_db)):
     }
 
 # Add this import at top
-from database import create_tables
 
 # Add this right after app = FastAPI(...)
 create_tables()  # Creates tables on startup if they don't exist

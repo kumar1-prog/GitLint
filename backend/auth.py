@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 import httpx
 import os
@@ -23,7 +23,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 
 @router.get("/login")
-def github_login(prompt: str = None):
+def github_login(request: Request, prompt: str = None):
     # Step 1: Send user TO GitHub's login page
     # scope=read:user,public_repo means we only ask for
     # profile info + public repos — nothing private
